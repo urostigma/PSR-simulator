@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <title>Bootstrap Example</title>
   <meta charset="utf-8">
@@ -8,32 +9,233 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 </head>
+
 <body>
 
-<div class="jumbotron text-center">
-  <h1>My First Bootstrap Page</h1>
-  <p>Resize this responsive page to see the effect!</p> 
-</div>
-  
-<div class="container">
-  <div class="row">
-    <div class="col-sm-4">
-      <h3>Column 1</h3>
-      <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit...</p>
-      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris...</p>
+  <div class="jumbotron text-center">
+    <h1>剪刀石頭布 - 玩家分布模擬器</h1>
+    <p>Paper-Scissors-Rock Simulator</p>
+  </div>
+
+  <div class="container">
+    <div class="row">
+      <h3>設定初始玩家人數比例</h3>
+      <label for="scissors_amount" style="width: auto;">剪刀:</label>
+      <input type="text" id="scissors_amount" name="scissors_amount" style="width: 200px;" value="5"><br><br>
+      <label for="rock_amount" style="width: auto;">石頭:</label>
+      <input type="text" id="rock_amount" name="rock_amount" style="width: 200px;" value="5"><br><br>
+      <label for="paper_amount" style="width: auto;">布:</label>
+      <input type="text" id="paper_amount" name="paper_amount" style="width: 200px;" value="5"><br><br>
+      <input type="button" id="start_btn" value="開始模擬"></br>
+      <a>*數值請輸入自然數(1,2,3...)</a></br>
+      <a>每一輪會隨機選擇兩個玩家作勝負，輸的玩家將改變策略成贏的玩家策略</a></br>
+      <a>不斷重複直到某一策略的玩家絕滅則模擬終止</a></br>
     </div>
-    <div class="col-sm-4">
-      <h3>Column 2</h3>
-      <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit...</p>
-      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris...</p>
-    </div>
-    <div class="col-sm-4">
-      <h3>Column 3</h3>        
-      <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit...</p>
-      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris...</p>
+    <div class="row" id="simulate_display" name="simulate_display">
     </div>
   </div>
-</div>
 
+  <script>
+    const strategy_list = Object.freeze({ 'paper': 'paper', 'rock': 'rock', 'scissors': 'scissors' })
+
+    class Player {
+      constructor(strategy = null) {
+        this._strategy = strategy
+      }
+
+      get strategy() { return this._strategy }
+
+      changeStrategy(strategy) { this._strategy = strategy }
+
+      play() { return this._strategy }
+    }
+
+    class Game {
+      constructor() {
+        /** @type {Array<Player>} */
+        this._palyers = new Array()
+      }
+
+      static get strategy_list() { return strategy_list }
+
+      get players() { return this._palyers }
+
+      /**
+       * @param {String} strategy1
+       * @param {String} strategy2
+       */
+      static whichStrategyWinner(strategy1, strategy2) {
+        switch (strategy1) {
+          case 'paper':
+            switch (strategy2) {
+              case 'paper':
+                return 'draw'
+              case 'rock':
+                return 'paper'
+              case 'scissors':
+                return 'scissors'
+            }
+            break
+          case 'rock':
+            switch (strategy2) {
+              case 'paper':
+                return 'paper'
+              case 'rock':
+                return 'draw'
+              case 'scissors':
+                return 'rock'
+            }
+            break
+          case 'scissors':
+            switch (strategy2) {
+              case 'paper':
+                return 'scissors'
+              case 'rock':
+                return 'rock'
+              case 'scissors':
+                return 'draw'
+            }
+            break
+        }
+      }
+
+      /**
+       * @param {Player} player1
+       * @param {Player} player2
+       */
+      static whichPlayerWinner(player1, player2) {
+        let result = this.whichStrategyWinner(player1.strategy, player2.strategy)
+        if (result == 'draw') return 0
+        else if (result == player1.strategy) return player1
+        else return player2
+      }
+
+      /**
+       * @param {Player} player
+       */
+      addPlayer(player) {
+        this._palyers.push(player)
+      }
+
+      playAGame() {
+        if (this._palyers.length < 2) return
+
+        let player1, player2
+        {
+          player1 = this._palyers[Math.floor(Math.random() * Math.floor(this._palyers.length))]
+          while (true) {
+            player2 = this._palyers[Math.floor(Math.random() * Math.floor(this._palyers.length))]
+            if (player1 != player2) break
+          }
+        }
+
+        let player1_origin_strategy = player1.strategy
+        let player2_origin_strategy = player2.strategy
+        let winner = Game.whichPlayerWinner(player1, player2)
+        if (winner == player1) player2.changeStrategy(player1.strategy)
+        if (winner == player2) player1.changeStrategy(player2.strategy)
+
+        return { 'player1': player1_origin_strategy, 'player2': player2_origin_strategy }
+      }
+
+      /**
+       * @param {String} strategy
+       */
+      getPlayerRatio(strategy) {
+        let total = this._palyers.length
+        if (total == 0) return 0
+
+        let amount = 0
+        for (let player of this._palyers) { if (player.strategy == strategy) amount++ }
+
+        return {
+          'amount': amount,
+          'total': total,
+          'ratio': (amount / total).toFixed(2)
+        }
+      }
+    }
+
+    let counter = 0
+    document.getElementById("start_btn").onclick = function () {
+      let paper_amount = Number(document.getElementById('paper_amount').value)
+      let scissors_amount = Number(document.getElementById('scissors_amount').value)
+      let rock_amount = Number(document.getElementById('rock_amount').value)
+      { // 確認輸入值
+        if (!Number.isInteger(paper_amount) || !Number.isInteger(scissors_amount) || !Number.isInteger(rock_amount) ||
+          paper_amount <= 0 || scissors_amount <= 0 || rock_amount <= 0) {
+          alert('輸入值不是自然數' + ' ' + paper_amount + ' ' + scissors_amount + ' ' + rock_amount)
+          return
+        }
+      }
+
+      let game = new Game()
+      { // 初始化遊戲物件
+        while (paper_amount--) game.addPlayer(new Player(Game.strategy_list.paper))
+        while (scissors_amount--) game.addPlayer(new Player(Game.strategy_list.scissors))
+        while (rock_amount--) game.addPlayer(new Player(Game.strategy_list.rock))
+      }
+
+      { // 清空先前模擬結果
+        let display_elements = document.querySelector('#simulate_display').childNodes
+        for (let element of display_elements) {
+          element.remove()
+        }
+      }
+
+      let turn = 0
+      let simulate_display = document.getElementById('simulate_display')
+      while (true) {
+        let play_info = game.playAGame()
+
+        let current_paper_state = game.getPlayerRatio(Game.strategy_list.paper)
+        let current_scissors_state = game.getPlayerRatio(Game.strategy_list.scissors)
+        let current_rock_state = game.getPlayerRatio(Game.strategy_list.rock)
+        let current_paper_percentage = (current_paper_state.ratio * 100).toFixed(0)
+        let current_scissors_percentage = (current_scissors_state.ratio * 100).toFixed(0)
+        let current_rock_percentage = 100 - current_paper_percentage - current_scissors_percentage
+
+        { // 顯示該輪結果
+          let turn_component = document.createElement('div')
+          turn_component.id = `turn_${turn}`
+          turn_component.innerHTML = `Turn ${turn}: ${play_info.player1} VS ${play_info.player2}`
+
+          let bar
+          { // 產生bar條
+            bar = document.createElement('div')
+            bar.className = 'progress'
+            bar.id = `bar_${turn}`
+
+            let paper_bar = document.createElement('div')
+            let scissors_bar = document.createElement('div')
+            let rock_bar = document.createElement('div')
+            paper_bar.className = 'progress-bar progress-bar-success'
+            scissors_bar.className = 'progress-bar progress-bar-warning'
+            rock_bar.className = 'progress-bar progress-bar-danger'
+            paper_bar.setAttribute('role', 'progressbar')
+            scissors_bar.setAttribute('role', 'progressbar')
+            rock_bar.setAttribute('role', 'progressbar')
+            paper_bar.setAttribute('style', `width:${current_paper_percentage}%`)
+            scissors_bar.setAttribute('style', `width:${current_scissors_percentage}%`)
+            rock_bar.setAttribute('style', `width:${current_rock_percentage}%`)
+            paper_bar.innerHTML = '布'
+            scissors_bar.innerHTML = '剪刀'
+            rock_bar.innerHTML = '石頭'
+
+            bar.appendChild(paper_bar)
+            bar.appendChild(scissors_bar)
+            bar.appendChild(rock_bar)
+          }
+
+          turn_component.appendChild(bar)
+          simulate_display.appendChild(turn_component)
+        }
+
+        if (current_paper_state.amount == 0 || current_scissors_state.amount == 0 || current_rock_state.amount == 0) break  // 終止模擬
+        turn++
+      }
+    }
+  </script>
 </body>
+
 </html>
